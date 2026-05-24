@@ -51,3 +51,13 @@ iom:
     enabled: ${TELEGRAM_BOT_ENABLED:true}
     bot-token: ${TELEGRAM_BOT_TOKEN:}
     bot-username: ${TELEGRAM_BOT_USERNAME:}
+  client:
+    base-url: ${WEB_BASE_URL}
+  security:
+    jwt:
+      secret-key: ${JWT_SECRET_KEY}
+      access-expiration: 15
+      refresh-expiration: 10080
+    cookie:
+      secure: false
+      same-site: lax
