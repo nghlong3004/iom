@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 public enum BotCommand {
   START("/start"),
   HELP("/help"),
+  TODAY("/today"),
+  MONTH("/month"),
   ;
 
   private final String command;
