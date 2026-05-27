@@ -159,6 +159,68 @@ class SummaryIntentHandlerTest {
     verify(messageSender, never()).send(any());
   }
 
+  @Test
+  @DisplayName("Should support non-command text")
+  void supports_NonCommandText_ReturnsTrue() {
+    var message = new IncomingMessage(MessageChannel.TELEGRAM, "u-1", "chat-1", "xem tong hom nay");
+
+    assertThat(handler.supports(message)).isTrue();
+  }
+
+  @Test
+  @DisplayName("Should not support command text")
+  void supports_CommandText_ReturnsFalse() {
+    var message = new IncomingMessage(MessageChannel.TELEGRAM, "u-1", "chat-1", "/today");
+
+    assertThat(handler.supports(message)).isFalse();
+  }
+
+  @Test
+  @DisplayName("Should not support blank text")
+  void supports_BlankText_ReturnsFalse() {
+    var message = new IncomingMessage(MessageChannel.TELEGRAM, "u-1", "chat-1", "   ");
+
+    assertThat(handler.supports(message)).isFalse();
+  }
+
+  @Test
+  @DisplayName("Should handle today income-only summary request")
+  void handle_TodayIncomeOnlySummary_SendsIncomeSummary() {
+    var message =
+        new IncomingMessage(MessageChannel.TELEGRAM, "u-1", "chat-1", "xem tong thu hom nay");
+    var user = AppUser.builder().id(1L).build();
+    var summary = new TransactionSummary(java.util.Map.of(), 0);
+    given(userResolver.resolve(message)).willReturn(user);
+    given(transactionService.summarize(any(), any(), any())).willReturn(summary);
+    given(botMessages.todayLabel()).willReturn("Today");
+    given(summaryFormatter.format("Today", summary, FlowFilter.INCOME)).willReturn("income summary");
+
+    var handled = handler.handle(message);
+
+    assertThat(handled).isTrue();
+    assertSentText("income summary");
+    verify(summaryIntentInterpreter, never()).interpret(any());
+  }
+
+  @Test
+  @DisplayName("Should handle month income-only summary request")
+  void handle_MonthIncomeOnlySummary_SendsIncomeSummary() {
+    var message =
+        new IncomingMessage(MessageChannel.TELEGRAM, "u-1", "chat-1", "thang nay thu bao nhieu");
+    var user = AppUser.builder().id(1L).build();
+    var summary = new TransactionSummary(java.util.Map.of(), 0);
+    given(userResolver.resolve(message)).willReturn(user);
+    given(transactionService.summarize(any(), any(), any())).willReturn(summary);
+    given(botMessages.monthLabel(anyInt(), anyInt())).willReturn("Month");
+    given(summaryFormatter.format("Month", summary, FlowFilter.INCOME)).willReturn("income month");
+
+    var handled = handler.handle(message);
+
+    assertThat(handled).isTrue();
+    assertSentText("income month");
+    verify(summaryIntentInterpreter, never()).interpret(any());
+  }
+
   private void assertSentText(String expectedText) {
     var captor = ArgumentCaptor.forClass(OutgoingMessage.class);
     verify(messageSender).send(captor.capture());

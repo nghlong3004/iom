@@ -4,6 +4,14 @@
 
 ---
 
+## Read Order
+
+- Read this file for the broad project architecture and module inventory.
+- Read [`docs/BOT_FLOW.md`](BOT_FLOW.md) first when working on Telegram routing, bot replies, transaction parsing, summary intents, or command handler tests.
+- `BOT_FLOW.md` is intentionally shorter and should be kept up to date after bot behavior changes.
+
+---
+
 ## 1. Project Overview
 
 - **Project Name**: IOM (Input Output Money)
@@ -96,7 +104,8 @@ sequenceDiagram
 
 ### 3.3 Command Handler Chain (Strategy Pattern)
 
-Handlers are matched in `@Order` priority. First match wins.
+Handlers are matched in `@Order` priority. A handler returns `true` when it handled the
+message and `false` when the router should continue to the next matching handler.
 
 | Order | Handler | Matches |
 |-------|---------|---------|
@@ -106,9 +115,12 @@ Handlers are matched in `@Order` priority. First match wins.
 | 4 | `MonthSummaryHandler` | `/month` |
 | 10 | `UnknownCommandHandler` | Any unrecognized `/command` |
 | 50 | `RecordTransactionHandler` | Non-command text with financial data |
+| 80 | `SummaryIntentHandler` | Natural-language summary requests |
 | 99 | `EchoMessageHandler` | Any remaining text (fallback guidance) |
 
-`RecordTransactionHandler` calls `MessageInterpreter.interpret()`. If the LLM returns empty (not a financial message), the handler exits silently, letting the router fall through to `EchoMessageHandler`.
+`RecordTransactionHandler` calls `MessageInterpreter.interpret()`. If the LLM returns empty
+(not a financial message), it returns `false`, letting the router fall through to
+`SummaryIntentHandler` and then `EchoMessageHandler`.
 
 ---
 
@@ -165,6 +177,9 @@ Three tables managed by Flyway migrations in `api/src/main/resources/db/migratio
 | Decision | Rationale |
 |----------|-----------|
 | **LLM for parsing** (not regex) | Core parsing delegated to LLM via `MessageInterpreter` port. Handles Vietnamese natural language, multiple currencies, relative dates — far more robust than regex. |
+| **DeepSeek via Spring AI** | Transaction parsing and summary intent fallback use Spring AI `ChatModel` with DeepSeek. Provider-specific types stay inside service adapters. |
+| **Bot handlers return boolean** | `BotCommandHandler.handle()` returns `true` when handled and `false` when routing should continue. This lets transaction parsing fall through to summary intent and fallback replies. |
+| **Natural summary intent fallback** | `SummaryIntentHandler` runs deterministic today/month rules first, then calls `SummaryIntentInterpreter` for date ranges and ambiguous natural-language summary requests. |
 | **Strategy Pattern** | Applied to command routing (`BotCommandHandler`), message interpretation (`MessageInterpreter`), and user resolution (`UserResolver`). Open/Closed Principle: add new behavior without modifying existing code. |
 | **MapStruct** for all mapping | No manual `new Entity(...)` for cross-layer conversions. Consistent with existing `TelegramMessageMapper`. Mappers: `TransactionMapper`, `UserMapper`. |
 | **Multi-currency** from day one | `Currency` enum with formatting metadata (`symbol`, `groupSeparator`, `minorUnits`). Amounts stored in smallest unit. `AmountFormatter` is currency-aware. |
@@ -305,7 +320,8 @@ cd api
 
 | Item | Status | Details |
 |------|--------|---------|
-| **LLM API integration** | TODO | `LlmMessageInterpreter.java` has the prompt ready but the actual HTTP call to LLM provider is a TODO. User needs to choose: OpenAI / Gemini / Anthropic. |
-| **Unit tests** | TODO | Plan in `implementation_plan.md`: ParsedTransaction validation, TransactionService, AmountFormatter, DefaultUserResolver, RecordTransactionHandler, integration test with Testcontainers. |
+| **LLM transaction parsing** | Done | `LlmMessageInterpreter` uses Spring AI `ChatModel` with DeepSeek and returns empty on invalid, failed, or non-transaction responses. |
+| **LLM summary intent fallback** | Done | `LlmSummaryIntentInterpreter` parses natural summary requests, date ranges, flow filters, and clarification cases. |
+| **Unit tests** | In progress | Core bot routing, parser adapters, formatters, transaction handling, and service behavior have unit tests. Integration tests use Testcontainers and may skip without Docker. |
 | **Web dashboard** | Phase 2 | React client in `client/` directory. OAuth2 login flow partially prepared in `oauth/` package. |
 | **OCR receipt scanning** | Phase 3+ | Per BRIEF.md roadmap. |

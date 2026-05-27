@@ -88,4 +88,81 @@ class TransactionServiceTest {
     assertThat(result.totals().get(Currency.VND).totalExpense()).isEqualTo(30000L);
     assertThat(result.totals().get(Currency.VND).totalIncome()).isEqualTo(5000000L);
   }
+
+  @Test
+  @DisplayName("Should throw NullPointerException when user is null in record")
+  void record_NullUser_ThrowsNpe() {
+    var parsed =
+        new ParsedTransaction(
+            TransactionType.EXPENSE, 1L, Currency.VND, Category.FOOD, "test", null);
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () -> service.record(null, parsed, MessageChannel.TELEGRAM, "test"))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("user must not be null");
+  }
+
+  @Test
+  @DisplayName("Should throw NullPointerException when parsed is null in record")
+  void record_NullParsed_ThrowsNpe() {
+    var user = AppUser.builder().id(1L).build();
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () -> service.record(user, null, MessageChannel.TELEGRAM, "test"))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("parsed must not be null");
+  }
+
+  @Test
+  @DisplayName("Should throw NullPointerException when source is null in record")
+  void record_NullSource_ThrowsNpe() {
+    var user = AppUser.builder().id(1L).build();
+    var parsed =
+        new ParsedTransaction(
+            TransactionType.EXPENSE, 1L, Currency.VND, Category.FOOD, "test", null);
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () -> service.record(user, parsed, null, "test"))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("source must not be null");
+  }
+
+  @Test
+  @DisplayName("Should throw NullPointerException when user is null in summarize")
+  void summarize_NullUser_ThrowsNpe() {
+    var from = Instant.parse("2026-05-01T00:00:00Z");
+    var to = Instant.parse("2026-06-01T00:00:00Z");
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () -> service.summarize(null, from, to))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("user must not be null");
+  }
+
+  @Test
+  @DisplayName("Should throw NullPointerException when from is null in summarize")
+  void summarize_NullFrom_ThrowsNpe() {
+    var user = AppUser.builder().id(1L).build();
+    var to = Instant.parse("2026-06-01T00:00:00Z");
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () -> service.summarize(user, null, to))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("from must not be null");
+  }
+
+  @Test
+  @DisplayName("Should return zero summary when no transactions found")
+  void summarize_EmptyResult_ReturnsZeroSummary() {
+    var user = AppUser.builder().id(1L).build();
+    var from = Instant.parse("2026-05-01T00:00:00Z");
+    var to = Instant.parse("2026-06-01T00:00:00Z");
+    given(transactionRepository.findByUserIdAndOccurredAtBetween(1L, from, to))
+        .willReturn(List.of());
+
+    var result = service.summarize(user, from, to);
+
+    assertThat(result.transactionCount()).isZero();
+    assertThat(result.totals()).isEmpty();
+  }
 }

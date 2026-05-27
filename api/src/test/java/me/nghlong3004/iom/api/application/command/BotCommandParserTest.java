@@ -33,4 +33,56 @@ class BotCommandParserTest {
 
     assertThat(result).isTrue();
   }
+
+  @Test
+  @DisplayName("Should match exact command without suffix")
+  void matches_ExactCommand_ReturnsTrue() {
+    var message = new IncomingMessage(MessageChannel.TELEGRAM, "u-1", "chat-1", "/today");
+
+    var result = BotCommandParser.matches(message, BotCommand.TODAY);
+
+    assertThat(result).isTrue();
+  }
+
+  @Test
+  @DisplayName("Should not match different command")
+  void matches_DifferentCommand_ReturnsFalse() {
+    var message = new IncomingMessage(MessageChannel.TELEGRAM, "u-1", "chat-1", "/help");
+
+    var result = BotCommandParser.matches(message, BotCommand.TODAY);
+
+    assertThat(result).isFalse();
+  }
+
+  @Test
+  @DisplayName("Should not match non-command text")
+  void matches_NonCommandText_ReturnsFalse() {
+    var message = new IncomingMessage(MessageChannel.TELEGRAM, "u-1", "chat-1", "hello");
+
+    var result = BotCommandParser.matches(message, BotCommand.TODAY);
+
+    assertThat(result).isFalse();
+  }
+
+  @Test
+  @DisplayName("Should not match null text")
+  void matches_NullText_ReturnsFalse() {
+    var message = new IncomingMessage(MessageChannel.TELEGRAM, "u-1", "chat-1", null);
+
+    var result = BotCommandParser.matches(message, BotCommand.TODAY);
+
+    assertThat(result).isFalse();
+  }
+
+  @Test
+  @DisplayName("normalize should return empty for null input")
+  void normalize_NullInput_ReturnsEmpty() {
+    assertThat(BotCommandParser.normalize(null)).isEmpty();
+  }
+
+  @Test
+  @DisplayName("normalize should return empty for non-slash text")
+  void normalize_NonSlashText_ReturnsEmpty() {
+    assertThat(BotCommandParser.normalize("hello")).isEmpty();
+  }
 }

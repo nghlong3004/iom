@@ -69,6 +69,45 @@ class SummaryFormatterTest {
     assertThat(result).isEqualTo("Hom qua:\n  Thu 100.000d (VND)\nTong: 2 giao dich.");
   }
 
+  @Test
+  @DisplayName("Should return empty message when no transactions")
+  void format_EmptySummary_ReturnsEmptyMessage() {
+    var summary = new TransactionSummary(java.util.Map.of(), 0);
+    given(botMessages.summaryEmpty("Hom qua")).willReturn("Khong co giao dich.");
+
+    var result = formatter.format("Hom qua", summary, FlowFilter.ALL);
+
+    assertThat(result).isEqualTo("Khong co giao dich.");
+  }
+
+  @Test
+  @DisplayName("Should default null flowFilter to ALL")
+  void format_NullFlowFilter_DefaultsToAll() {
+    var summary = summary();
+    given(botMessages.summaryLine("50.000d", "100.000d", "VND"))
+        .willReturn("  Chi 50.000d | Thu 100.000d (VND)");
+    given(botMessages.summaryTotal(2)).willReturn("Tong: 2 giao dich.");
+
+    var result = formatter.format("Hom qua", summary, null);
+
+    assertThat(result)
+        .isEqualTo("Hom qua:\n  Chi 50.000d | Thu 100.000d (VND)\nTong: 2 giao dich.");
+  }
+
+  @Test
+  @DisplayName("Should use ALL filter when calling 2-arg format overload")
+  void format_OverloadWithoutFilter_UsesAllDefault() {
+    var summary = summary();
+    given(botMessages.summaryLine("50.000d", "100.000d", "VND"))
+        .willReturn("  Chi 50.000d | Thu 100.000d (VND)");
+    given(botMessages.summaryTotal(2)).willReturn("Tong: 2 giao dich.");
+
+    var result = formatter.format("Label", summary);
+
+    assertThat(result)
+        .isEqualTo("Label:\n  Chi 50.000d | Thu 100.000d (VND)\nTong: 2 giao dich.");
+  }
+
   private TransactionSummary summary() {
     return new TransactionSummary(
         Map.of(Currency.VND, new TransactionSummary.CurrencyTotal(100000L, 50000L)), 2);

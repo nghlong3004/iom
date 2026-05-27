@@ -44,4 +44,36 @@ class AmountFormatterTest {
 
     assertThat(result).isEqualTo("\u20A97,000");
   }
+
+  @Test
+  @DisplayName("Should format EUR with decimal places and prefix")
+  void format_Eur_ReturnsFormattedAmount() {
+    var result = AmountFormatter.format(2599L, Currency.EUR);
+
+    assertThat(result).isEqualTo("\u20AC25.99");
+  }
+
+  @Test
+  @DisplayName("Should format GBP with decimal places and prefix")
+  void format_Gbp_ReturnsFormattedAmount() {
+    var result = AmountFormatter.format(100L, Currency.GBP);
+
+    assertThat(result).isEqualTo("\u00A31.00");
+  }
+
+  @Test
+  @DisplayName("Should format zero amount VND")
+  void format_ZeroAmountVnd_ReturnsZero() {
+    var result = AmountFormatter.format(0L, Currency.VND);
+
+    assertThat(result).isEqualTo("0d");
+  }
+
+  @Test
+  @DisplayName("Should format large VND amount with correct grouping")
+  void format_LargeAmountVnd_GroupsSeparatorsCorrectly() {
+    var result = AmountFormatter.format(1000000000L, Currency.VND);
+
+    assertThat(result).isEqualTo("1.000.000.000d");
+  }
 }

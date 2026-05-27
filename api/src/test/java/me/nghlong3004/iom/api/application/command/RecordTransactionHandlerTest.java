@@ -90,4 +90,28 @@ class RecordTransactionHandlerTest {
     verify(transactionService, never()).record(any(), any(), any(), any());
     verify(messageSender, never()).send(any());
   }
+
+  @Test
+  @DisplayName("Should support non-command text with content")
+  void supports_NonCommandTextWithContent_ReturnsTrue() {
+    var message = new IncomingMessage(MessageChannel.TELEGRAM, "u-1", "chat-1", "an sang 30k");
+
+    assertThat(handler.supports(message)).isTrue();
+  }
+
+  @Test
+  @DisplayName("Should not support command text")
+  void supports_CommandText_ReturnsFalse() {
+    var message = new IncomingMessage(MessageChannel.TELEGRAM, "u-1", "chat-1", "/start");
+
+    assertThat(handler.supports(message)).isFalse();
+  }
+
+  @Test
+  @DisplayName("Should not support blank text")
+  void supports_BlankText_ReturnsFalse() {
+    var message = new IncomingMessage(MessageChannel.TELEGRAM, "u-1", "chat-1", "   ");
+
+    assertThat(handler.supports(message)).isFalse();
+  }
 }

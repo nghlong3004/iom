@@ -53,4 +53,31 @@ class BotCommandRouterTest {
     verify(secondHandler, never()).supports(message);
     verify(secondHandler, never()).handle(message);
   }
+
+  @Test
+  @DisplayName("Should skip handler when supports returns false")
+  void route_HandlerNotSupports_SkipsToNextHandler() {
+    var message = new IncomingMessage(MessageChannel.TELEGRAM, "u-1", "chat-1", "hello");
+    var router = new BotCommandRouter(List.of(firstHandler, secondHandler));
+    given(firstHandler.supports(message)).willReturn(false);
+    given(secondHandler.supports(message)).willReturn(true);
+    given(secondHandler.handle(message)).willReturn(true);
+
+    router.route(message);
+
+    verify(firstHandler, never()).handle(message);
+    verify(secondHandler).handle(message);
+  }
+
+  @Test
+  @DisplayName("Should throw IllegalStateException when no handler handles the message")
+  void route_NoHandlerHandles_ThrowsIllegalStateException() {
+    var message = new IncomingMessage(MessageChannel.TELEGRAM, "u-1", "chat-1", "hello");
+    var router = new BotCommandRouter(List.of(firstHandler));
+    given(firstHandler.supports(message)).willReturn(true);
+    given(firstHandler.handle(message)).willReturn(false);
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(() -> router.route(message))
+        .isInstanceOf(IllegalStateException.class);
+  }
 }
