@@ -3,6 +3,7 @@ package me.nghlong3004.iom.api.application.command;
 import java.text.Normalizer;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
+import me.nghlong3004.iom.api.application.port.out.ConversationContextStore;
 import me.nghlong3004.iom.api.application.port.out.UserResolver;
 import me.nghlong3004.iom.api.common.FinanceViewRenderer;
 import me.nghlong3004.iom.api.config.BotIntentProperties;
@@ -46,6 +47,7 @@ public class ViewFinancesHandler implements BotCommandHandler {
   private final UserResolver userResolver;
   private final MessageSender messageSender;
   private final BotIntentProperties botIntentProperties;
+  private final ConversationContextStore contextStore;
 
   @Override
   public boolean supports(IncomingMessage message) {
@@ -68,6 +70,15 @@ public class ViewFinancesHandler implements BotCommandHandler {
       var viewMode = detectViewMode(normalizedText);
       var user = userResolver.resolve(message);
       var transactions = transactionService.findByRange(user, dateRange.get());
+
+      // Save viewed transaction IDs for ByIndex reference (delete/update)
+      if (!transactions.isEmpty()) {
+        var context = contextStore.get(message.channel() + ":" + message.externalUserId());
+        context.setLastViewedTransactionIds(
+            transactions.stream().map(t -> t.getId()).toList());
+        contextStore.save(context);
+      }
+
       var summary = TransactionSummary.from(transactions);
       var effectiveMode = autoAdjustViewMode(viewMode, transactions.size());
       var reply =

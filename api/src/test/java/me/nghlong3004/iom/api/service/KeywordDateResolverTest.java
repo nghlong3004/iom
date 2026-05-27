@@ -21,7 +21,8 @@ class KeywordDateResolverTest {
               List.of("thang nay", "month"),
               List.of("chi", "tieu"),
               List.of("thu", "luong"),
-              List.of("mua gi", "chi gi", "lich su")));
+              List.of("mua gi", "chi gi", "lich su")),
+          null);
 
   private final KeywordDateResolver resolver = new KeywordDateResolver(properties);
 

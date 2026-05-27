@@ -10,7 +10,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @since 5/26/2026
  */
 @ConfigurationProperties(prefix = "iom.bot.intents")
-public record BotIntentProperties(Summary summary) {
+public record BotIntentProperties(Summary summary, ManageAction manageAction) {
 
   public record Summary(
       List<String> actionKeywords,
@@ -22,4 +22,13 @@ public record BotIntentProperties(Summary summary) {
       List<String> expenseKeywords,
       List<String> incomeKeywords,
       List<String> detailKeywords) {}
+
+  public record ManageAction(
+      List<String> deleteKeywords,
+      List<String> updateKeywords,
+      List<String> undoKeywords,
+      List<String> confirmKeywords,
+      List<String> cancelKeywords,
+      List<String> latestKeywords,
+      String indexPattern) {}
 }

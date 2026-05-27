@@ -10,6 +10,7 @@ import static org.mockito.BDDMockito.then;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import me.nghlong3004.iom.api.application.port.out.ConversationContextStore;
 import me.nghlong3004.iom.api.application.port.out.UserResolver;
 import me.nghlong3004.iom.api.common.FinanceViewRenderer;
 import me.nghlong3004.iom.api.config.BotIntentProperties;
@@ -42,6 +43,7 @@ class ViewFinancesHandlerTest {
   @Mock private TransactionService transactionService;
   @Mock private UserResolver userResolver;
   @Mock private MessageSender messageSender;
+  @Mock private ConversationContextStore contextStore;
 
   private ViewFinancesHandler handler;
 
@@ -61,10 +63,12 @@ class ViewFinancesHandlerTest {
                 List.of("thang nay"),
                 List.of("chi", "tieu"),
                 List.of("thu", "luong"),
-                List.of("mua gi", "chi gi", "lich su")));
+                List.of("mua gi", "chi gi", "lich su")),
+            null);
     handler =
         new ViewFinancesHandler(
-            dateRangeChain, renderer, transactionService, userResolver, messageSender, properties);
+            dateRangeChain, renderer, transactionService, userResolver, messageSender, properties,
+            contextStore);
   }
 
   @Test

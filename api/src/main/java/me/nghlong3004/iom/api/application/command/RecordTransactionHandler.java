@@ -2,6 +2,7 @@ package me.nghlong3004.iom.api.application.command;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import me.nghlong3004.iom.api.application.port.out.ConversationContextStore;
 import me.nghlong3004.iom.api.application.port.out.MessageInterpreter;
 import me.nghlong3004.iom.api.application.port.out.UserResolver;
 import me.nghlong3004.iom.api.common.ConfirmationFormatter;
@@ -34,6 +35,7 @@ public class RecordTransactionHandler implements BotCommandHandler {
   private final TransactionService transactionService;
   private final MessageSender messageSender;
   private final ConfirmationFormatter confirmationFormatter;
+  private final ConversationContextStore contextStore;
 
   @Override
   public boolean supports(IncomingMessage message) {
@@ -52,10 +54,19 @@ public class RecordTransactionHandler implements BotCommandHandler {
     var transaction =
         transactionService.record(user, parsed.get(), message.channel(), message.normalizedText());
 
+    // Save last recorded transaction ID for undo/reference
+    var context = contextStore.get(contextKey(message));
+    context.setLastRecordedTransactionId(transaction.getId());
+    contextStore.save(context);
+
     var confirmation = confirmationFormatter.format(parsed.get());
     messageSender.send(OutgoingMessage.replyTo(message, confirmation));
 
     log.info("Transaction {} recorded for user {}", transaction.getId(), user.getId());
     return true;
+  }
+
+  private String contextKey(IncomingMessage message) {
+    return message.channel() + ":" + message.externalUserId();
   }
 }

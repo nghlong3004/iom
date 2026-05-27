@@ -57,13 +57,18 @@ domain/      application/port/out/
   message/     MessageInterpreter   ← Strategy port (LLM parsing)
   transaction/ UserResolver         ← Strategy port (user lookup)
   summary/     DateRangeResolver    ← Chain of Responsibility port
-  user/        MessageSender        ← Port (reply sending)
+  conversation/ActionResolver       ← Chain of Responsibility port
+  user/        ConversationContextStore ← Strategy port (context storage)
+               MessageSender        ← Port (reply sending)
   │
 service/                     Infrastructure adapters (implements ports)
   LlmMessageInterpreter       implements MessageInterpreter
   KeywordDateResolver          implements DateRangeResolver (Order 1)
   LlmDateRangeResolver         implements DateRangeResolver (Order 2)
   DateRangeResolverChain       orchestrates DateRangeResolver chain
+  KeywordActionResolver        implements ActionResolver (Order 1)
+  ActionResolverChain          orchestrates ActionResolver chain
+  InMemoryConversationContextStore implements ConversationContextStore
   DefaultUserResolver          implements UserResolver
   TransactionService           business logic (composition)
   mapper/                      MapStruct mappers
@@ -119,12 +124,13 @@ message and `false` when the router should continue to the next matching handler
 | 4 | `MonthSummaryHandler` | `/month` |
 | 10 | `UnknownCommandHandler` | Any unrecognized `/command` |
 | 50 | `RecordTransactionHandler` | Non-command text with financial data |
+| 60 | `ManageTransactionHandler` | Delete / update / undo / confirm / cancel |
 | 80 | `ViewFinancesHandler` | Natural-language summary/history requests (pipeline) |
 | 99 | `EchoMessageHandler` | Any remaining text (fallback guidance) |
 
 `RecordTransactionHandler` calls `MessageInterpreter.interpret()`. If the LLM returns empty
 (not a financial message), it returns `false`, letting the router fall through to
-`SummaryIntentHandler` and then `EchoMessageHandler`.
+`ManageTransactionHandler`, then `ViewFinancesHandler`, then `EchoMessageHandler`.
 
 ---
 
@@ -192,6 +198,10 @@ Three tables managed by Flyway migrations in `api/src/main/resources/db/migratio
 | **Strategy Pattern** | Applied to command routing (`BotCommandHandler`), message interpretation (`MessageInterpreter`), user resolution (`UserResolver`), and finance view rendering (`FinanceViewRenderer`). |
 | **MapStruct** for all mapping | No manual `new Entity(...)` for cross-layer conversions. Consistent with existing `TelegramMessageMapper`. Mappers: `TransactionMapper`, `UserMapper`. |
 | **Multi-currency** from day one | `Currency` enum with formatting metadata (`symbol`, `groupSeparator`, `minorUnits`). Amounts stored in smallest unit. `AmountFormatter` is currency-aware. |
+| **ConversationContext** | Per-user stateful session tracking `lastRecordedTransactionId`, `lastViewedTransactionIds`, and `pendingAction`. Platform-agnostic — same context works for Telegram, Web, Zalo. State Pattern: `IDLE → AWAITING_CONFIRMATION → IDLE`. |
+| **TransactionReference sealed** | `Latest`, `ByIndex(int)`, `ByMatch(String)` — three ways to reference a transaction. Exhaustive switch ensures all cases handled at compile time. |
+| **ActionResolver chain** | `KeywordActionResolver` (deterministic, Order 1) → `LlmActionResolver` (LLM fallback, Order 2 — future). Same Chain of Responsibility pattern as `DateRangeResolver`. |
+| **Confirmation flow** | Delete/update actions require user confirmation before execution. `ManageTransactionHandler` manages state transitions via `ConversationContext`. |
 | **Auto-provisioning users** | `DefaultUserResolver` creates `AppUser` + `ExternalAccount` on first Telegram message. No registration flow needed for bot usage. |
 | **Externalized messages** | All Vietnamese bot reply text lives in `messages.properties` via Spring `MessageSource`. `BotMessages` component provides typed access. No hardcoded user-facing strings in Java code. |
 | **No `@Data` on entities** | Per `spring-boot-data-access` skill. Entities use `@Getter`, `@Builder`, `@NoArgsConstructor(PROTECTED)`, `@AllArgsConstructor(PRIVATE)`. |

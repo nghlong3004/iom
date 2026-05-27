@@ -19,6 +19,10 @@ The bot currently supports:
   - `hom qua mua gi`
   - `hom kia chi gi`
   - `lich su tuan nay`
+- **Transaction management (delete / update / undo)**, for example:
+  - `xoa cai vua roi`
+  - `sua so 2 thanh 50k`
+  - `undo`
 - Fallback guidance for unrelated text.
 - Vietnamese user-facing replies via `messages.properties`.
 
@@ -54,6 +58,7 @@ and then fallback.
 | `4` | `MonthSummaryHandler` | `/month` command summary |
 | `10` | `UnknownCommandHandler` | unknown slash commands |
 | `50` | `RecordTransactionHandler` | non-command transaction recording |
+| `60` | `ManageTransactionHandler` | delete / update / undo / confirm / cancel |
 | `80` | `ViewFinancesHandler` | natural-language summary/history intent |
 | `99` | `EchoMessageHandler` | fallback guidance |
 
@@ -73,7 +78,9 @@ Flow:
 RecordTransactionHandler
   -> MessageInterpreter.interpret(text)
   -> Optional.empty(): return false
-  -> ParsedTransaction: resolve user, save transaction, send confirmation, return true
+  -> ParsedTransaction: resolve user, save transaction,
+     save lastRecordedTransactionId to ConversationContext,
+     send confirmation, return true
 ```
 
 `LlmMessageInterpreter` uses Spring AI `ChatModel` with DeepSeek configured by Spring AI.
@@ -144,6 +151,59 @@ expressions like `"tu 1/5 den 20/5"` or `"7 ngay qua"`.
 
 Command summaries keep `ALL` by default. Natural-language summaries can use any filter.
 
+## Transaction Management (Delete / Update / Undo)
+
+Key files:
+
+- `domain/transaction/TransactionReference.java` — sealed: Latest, ByIndex, ByMatch
+- `domain/transaction/TransactionAction.java` — sealed: Delete, Update, Undo, Confirm, Cancel
+- `domain/transaction/UpdateFields.java` — partial update value object
+- `domain/conversation/ConversationContext.java` — per-user stateful session
+- `application/port/out/ConversationContextStore.java` — storage port
+- `application/port/out/ActionResolver.java` — action resolution port
+- `service/InMemoryConversationContextStore.java` — in-memory adapter (30min TTL)
+- `service/KeywordActionResolver.java` — deterministic keyword matcher (Order 1)
+- `service/ActionResolverChain.java` — chain orchestrator
+- `application/command/ManageTransactionHandler.java` — handler (Order 60)
+
+### Conversation Flow
+
+```text
+ManageTransactionHandler.handle(message)
+  1. Load ConversationContext from store
+  2. If AWAITING_CONFIRMATION:
+     ├─ Confirm → execute pending (delete/update) → reply → clear
+     └─ Cancel  → reply "Đã hủy" → clear
+  3. ActionResolverChain.resolve(text)
+     ├─ KeywordActionResolver (Order 1): deterministic
+     └─ (LlmActionResolver Order 2: future, ByMatch)
+  4. Resolve TransactionReference:
+     ├─ Latest  → context.lastRecordedTransactionId
+     ├─ ByIndex → context.lastViewedTransactionIds[n-1]
+     └─ ByMatch → LLM fuzzy match (future)
+  5. Ask confirmation → state = AWAITING_CONFIRMATION
+```
+
+### Transaction References
+
+| User Input | Reference | Source |
+| --- | --- | --- |
+| `xoa cai vua roi` | `Latest` | `ConversationContext.lastRecordedTransactionId` |
+| `xoa so 2` | `ByIndex(2)` | `ConversationContext.lastViewedTransactionIds` |
+| `xoa cai an sang 30k` | `ByMatch(...)` | LLM fuzzy match (future) |
+
+### ConversationContext State Machine
+
+```text
+IDLE ──(delete/update)──> AWAITING_CONFIRMATION
+AWAITING_CONFIRMATION ──(ok)──> execute action ──> IDLE
+AWAITING_CONFIRMATION ──(hủy)──> IDLE
+```
+
+Context is updated by:
+- `RecordTransactionHandler`: saves `lastRecordedTransactionId`
+- `ViewFinancesHandler`: saves `lastViewedTransactionIds`
+
 ## Configuration
 
 Keyword config lives in profile YAML files under:
@@ -162,6 +222,14 @@ iom:
         expense-keywords: [...]
         income-keywords: [...]
         detail-keywords: [...]
+      manage-action:
+        delete-keywords: [...]
+        update-keywords: [...]
+        undo-keywords: [...]
+        confirm-keywords: [...]
+        cancel-keywords: [...]
+        latest-keywords: [...]
+        index-pattern: "(?:so|số)\\s*(\\d+)"
 ```
 
 DeepSeek/Spring AI config uses:
@@ -198,6 +266,11 @@ Useful tests:
 - `DateRangeTest`: factory methods, validation.
 - `FinanceQueryTest`: sealed variants construction.
 - `LlmMessageInterpreterTest`: DeepSeek transaction JSON parsing.
+- `ManageTransactionHandlerTest`: delete/update/undo, confirm/cancel, ByIndex.
+- `KeywordActionResolverTest`: all action keyword combos, accent handling.
+- `ActionResolverChainTest`: chain ordering, fallback.
+- `ConversationContextTest`: state transitions, index resolution.
+- `InMemoryConversationContextStoreTest`: create, save, isolation.
 
 Verification command:
 

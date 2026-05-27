@@ -3,11 +3,13 @@ package me.nghlong3004.iom.api.service;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import me.nghlong3004.iom.api.domain.MessageChannel;
 import me.nghlong3004.iom.api.domain.transaction.ParsedTransaction;
 import me.nghlong3004.iom.api.domain.transaction.Transaction;
+import me.nghlong3004.iom.api.domain.transaction.UpdateFields;
 import me.nghlong3004.iom.api.domain.user.AppUser;
 import me.nghlong3004.iom.api.repository.TransactionRepository;
 import me.nghlong3004.iom.api.service.mapper.TransactionMapper;
@@ -64,4 +66,51 @@ public class TransactionService {
     return transactionRepository.findByUserIdAndOccurredAtBetween(
         user.getId(), dateRange.from(), dateRange.to());
   }
+
+  public Optional<Transaction> findByUserAndId(AppUser user, Long transactionId) {
+    Objects.requireNonNull(user, "user must not be null");
+    Objects.requireNonNull(transactionId, "transactionId must not be null");
+    return transactionRepository.findById(transactionId)
+        .filter(tx -> tx.getUser().getId().equals(user.getId()));
+  }
+
+  @Transactional
+  public void delete(AppUser user, Long transactionId) {
+    Objects.requireNonNull(user, "user must not be null");
+    Objects.requireNonNull(transactionId, "transactionId must not be null");
+
+    var tx =
+        transactionRepository
+            .findById(transactionId)
+            .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
+
+    if (!tx.getUser().getId().equals(user.getId())) {
+      throw new IllegalArgumentException("Not authorized to delete this transaction");
+    }
+
+    transactionRepository.delete(tx);
+    log.info("Transaction deleted: id={}, userId={}", transactionId, user.getId());
+  }
+
+  @Transactional
+  public Transaction update(AppUser user, Long transactionId, UpdateFields changes) {
+    Objects.requireNonNull(user, "user must not be null");
+    Objects.requireNonNull(transactionId, "transactionId must not be null");
+    Objects.requireNonNull(changes, "changes must not be null");
+
+    var tx =
+        transactionRepository
+            .findById(transactionId)
+            .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
+
+    if (!tx.getUser().getId().equals(user.getId())) {
+      throw new IllegalArgumentException("Not authorized to update this transaction");
+    }
+
+    tx.applyChanges(changes);
+    var saved = transactionRepository.save(tx);
+    log.info("Transaction updated: id={}, userId={}", transactionId, user.getId());
+    return saved;
+  }
 }
+

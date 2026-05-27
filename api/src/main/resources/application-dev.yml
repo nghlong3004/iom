@@ -86,6 +86,14 @@ iom:
         expense-keywords: [chi, tieu, chi tieu]
         income-keywords: [thu, thu nhap, luong]
         detail-keywords: [mua gi, chi gi, lich su, danh sach, chi tiet, nhung gi]
+      manage-action:
+        delete-keywords: [xoa, xóa, delete, bo, bỏ]
+        update-keywords: [sua, sửa, update, doi, đổi, chinh, chỉnh]
+        undo-keywords: [undo, hoan tac, hoàn tác]
+        confirm-keywords: [ok, co, có, dong y, đồng ý, uh, ừ]
+        cancel-keywords: [huy, hủy, khong, không, thoi, thôi]
+        latest-keywords: [vua roi, vừa rồi, cuoi, cuối, moi nhat, mới nhất]
+        index-pattern: "(?:so|số)\\s*(\\d+)"
   telegram:
     enabled: ${TELEGRAM_BOT_ENABLED:true}
     bot-token: ${TELEGRAM_BOT_TOKEN:}

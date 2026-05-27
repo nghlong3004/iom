@@ -8,10 +8,12 @@ import static org.mockito.Mockito.verify;
 
 import java.time.LocalDate;
 import java.util.Optional;
+import me.nghlong3004.iom.api.application.port.out.ConversationContextStore;
 import me.nghlong3004.iom.api.application.port.out.MessageInterpreter;
 import me.nghlong3004.iom.api.application.port.out.UserResolver;
 import me.nghlong3004.iom.api.common.ConfirmationFormatter;
 import me.nghlong3004.iom.api.domain.MessageChannel;
+import me.nghlong3004.iom.api.domain.conversation.ConversationContext;
 import me.nghlong3004.iom.api.domain.message.IncomingMessage;
 import me.nghlong3004.iom.api.domain.message.MessageSender;
 import me.nghlong3004.iom.api.domain.message.OutgoingMessage;
@@ -22,11 +24,11 @@ import me.nghlong3004.iom.api.domain.transaction.Transaction;
 import me.nghlong3004.iom.api.domain.transaction.TransactionType;
 import me.nghlong3004.iom.api.domain.user.AppUser;
 import me.nghlong3004.iom.api.service.TransactionService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -43,8 +45,16 @@ class RecordTransactionHandlerTest {
   @Mock private TransactionService transactionService;
   @Mock private MessageSender messageSender;
   @Mock private ConfirmationFormatter confirmationFormatter;
+  @Mock private ConversationContextStore contextStore;
 
-  @InjectMocks private RecordTransactionHandler handler;
+  private RecordTransactionHandler handler;
+
+  @BeforeEach
+  void setUp() {
+    handler = new RecordTransactionHandler(
+        messageInterpreter, userResolver, transactionService, messageSender,
+        confirmationFormatter, contextStore);
+  }
 
   @Test
   @DisplayName("Should record transaction and send confirmation when parser returns data")
@@ -66,6 +76,7 @@ class RecordTransactionHandlerTest {
     given(transactionService.record(user, parsed, MessageChannel.TELEGRAM, "an sang 30k"))
         .willReturn(saved);
     given(confirmationFormatter.format(parsed)).willReturn("Da ghi nhan");
+    given(contextStore.get("TELEGRAM:u-1")).willReturn(new ConversationContext("TELEGRAM:u-1"));
 
     var handled = handler.handle(message);
 

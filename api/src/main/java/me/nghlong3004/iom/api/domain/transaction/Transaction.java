@@ -77,4 +77,22 @@ public class Transaction {
   @UpdateTimestamp
   @Column(nullable = false)
   private Instant updatedAt;
+
+  /**
+   * Applies partial changes from the given {@link UpdateFields}. Only non-null fields are updated.
+   */
+  public void applyChanges(me.nghlong3004.iom.api.domain.transaction.UpdateFields changes) {
+    if (changes.amount() != null) {
+      this.amount = changes.amount();
+    }
+    if (changes.category() != null) {
+      this.category = changes.category();
+    }
+    if (changes.note() != null) {
+      this.note = changes.note();
+    }
+    if (changes.type() != null) {
+      this.type = changes.type();
+    }
+  }
 }

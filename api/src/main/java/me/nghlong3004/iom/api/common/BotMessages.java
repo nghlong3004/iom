@@ -98,4 +98,42 @@ public class BotMessages {
   public String compactSeparator() {
     return get("bot.compact.separator");
   }
+
+  // Transaction management messages
+
+  public String manageConfirmDelete(String transactionDescription) {
+    return get("bot.manage.confirm.delete", transactionDescription);
+  }
+
+  public String manageConfirmUpdate(String currentDescription, String newDescription) {
+    return get("bot.manage.confirm.update", currentDescription, newDescription);
+  }
+
+  public String manageDeleted(String transactionDescription) {
+    return get("bot.manage.deleted", transactionDescription);
+  }
+
+  public String manageUpdated(String transactionDescription) {
+    return get("bot.manage.updated", transactionDescription);
+  }
+
+  public String manageUndone(String transactionDescription) {
+    return get("bot.manage.undone", transactionDescription);
+  }
+
+  public String manageCancelled() {
+    return get("bot.manage.cancelled");
+  }
+
+  public String manageNotFound() {
+    return get("bot.manage.not-found");
+  }
+
+  public String manageNoRecent() {
+    return get("bot.manage.no-recent");
+  }
+
+  public String manageNoList() {
+    return get("bot.manage.no-list");
+  }
 }
